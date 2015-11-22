@@ -3,7 +3,7 @@
 #include	"stdio.h"
 #include	"Gz.h"
 
-GzColor	*image=NULL;
+GzColor	*image = NULL;
 int xs, ys;
 int reset = 1;
 bool set = false;
@@ -14,98 +14,98 @@ float gradientMap[GSIZE*GSIZE][2];
 /* Image texture function */
 int tex_fun(float u, float v, GzColor color)
 {
-  unsigned char		pixel[3];
-  unsigned char     dummy;
-  char  		foo[8];
-  int   		i, j;
-  FILE			*fd;
+	unsigned char		pixel[3];
+	unsigned char     dummy;
+	char  		foo[8];
+	int   		i, j;
+	FILE			*fd;
 
-  if (reset) {          /* open and load texture file */
-    fd = fopen ("texture", "rb");
-    if (fd == NULL) {
-      fprintf (stderr, "texture file not found\n");
-      exit(-1);
-    }
-    fscanf (fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
-    image = (GzColor*)malloc(sizeof(GzColor)*(xs+1)*(ys+1));
-    if (image == NULL) {
-      fprintf (stderr, "malloc for texture image failed\n");
-      exit(-1);
-    }
+	if (reset) {          /* open and load texture file */
+		fd = fopen("texture", "rb");
+		if (fd == NULL) {
+			fprintf(stderr, "texture file not found\n");
+			exit(-1);
+		}
+		fscanf(fd, "%s %d %d %c", foo, &xs, &ys, &dummy);
+		image = (GzColor*)malloc(sizeof(GzColor)*(xs + 1)*(ys + 1));
+		if (image == NULL) {
+			fprintf(stderr, "malloc for texture image failed\n");
+			exit(-1);
+		}
 
-    for (i = 0; i < xs*ys; i++) {	/* create array of GzColor values */
-      fread(pixel, sizeof(pixel), 1, fd);
-      image[i][RED] = (float)((int)pixel[RED]) * (1.0 / 255.0);
-      image[i][GREEN] = (float)((int)pixel[GREEN]) * (1.0 / 255.0);
-      image[i][BLUE] = (float)((int)pixel[BLUE]) * (1.0 / 255.0);
-      }
+		for (i = 0; i < xs*ys; i++) {	/* create array of GzColor values */
+			fread(pixel, sizeof(pixel), 1, fd);
+			image[i][RED] = (float)((int)pixel[RED]) * (1.0 / 255.0);
+			image[i][GREEN] = (float)((int)pixel[GREEN]) * (1.0 / 255.0);
+			image[i][BLUE] = (float)((int)pixel[BLUE]) * (1.0 / 255.0);
+		}
 
-    reset = 0;          /* init is done */
-	fclose(fd);
-  }
+		reset = 0;          /* init is done */
+		fclose(fd);
+	}
 
-  // clamp u and v
-  if (u < 0) u = 0;
-  else if (u > 1) u = 1;
-  if (v < 0) v = 0;
-  else if (v > 1) v = 1;
+	// clamp u and v
+	if (u < 0) u = 0;
+	else if (u > 1) u = 1;
+	if (v < 0) v = 0;
+	else if (v > 1) v = 1;
 
-  int x = xs;
-  int y = ys;
+	int x = xs;
+	int y = ys;
 
-  float xpoint = u * xs;
-  float ypoint = v * ys;
-  int xbegin = xpoint, ybegin = ypoint;
-  int xend = ceilf(xpoint), yend = ceilf(ypoint);
+	float xpoint = u * xs;
+	float ypoint = v * ys;
+	int xbegin = xpoint, ybegin = ypoint;
+	int xend = ceilf(xpoint), yend = ceilf(ypoint);
 
-  // Prevent skewing values for the image
-  if (xbegin >= xs - 1) {
-	  xbegin = xs - 2;
-	  xend = xs - 1;
-  }
-  if (ybegin >= ys - 1) {
-	  ybegin = ys - 2;
-	  yend = ys - 1;
-  }
-  if (xend <= 0) {
-	  xbegin = 0;
-	  xend = 1;
-  }
-  if (yend <= 0) {
-	  ybegin = 0;
-	  yend = 1;
-  }
+	// Prevent skewing values for the image
+	if (xbegin >= xs - 1) {
+		xbegin = xs - 2;
+		xend = xs - 1;
+	}
+	if (ybegin >= ys - 1) {
+		ybegin = ys - 2;
+		yend = ys - 1;
+	}
+	if (xend <= 0) {
+		xbegin = 0;
+		xend = 1;
+	}
+	if (yend <= 0) {
+		ybegin = 0;
+		yend = 1;
+	}
 
 
-  int indexUR = xbegin + xs * ybegin;
-  int indexUL = xend + xs * ybegin;
-  int indexDL = xend + xs * yend;
-  int indexDR = xbegin + xs * yend;
+	int indexUR = xbegin + xs * ybegin;
+	int indexUL = xend + xs * ybegin;
+	int indexDL = xend + xs * yend;
+	int indexDR = xbegin + xs * yend;
 
-  int max = xs*ys;
+	int max = xs*ys;
 
-  if (indexDL >= max)
-	  indexDL = max - 1;
+	if (indexDL >= max)
+		indexDL = max - 1;
 
-  if (xpoint == xbegin && ypoint == ybegin) { // if texture lies on a point
-	color[RED] = image[indexUR][RED];
-	color[GREEN] = image[indexUR][GREEN];
-	color[BLUE] = image[indexUR][BLUE];
-  }
-  else { // bilinear interpolation
-	  float s = xpoint - xbegin;
-	  float t = ypoint - ybegin;
-	  for (int c = 0; c < 3; ++c) {
-		  color[c] = ((1 - s) * (1 - t) * image[indexUR][c]) +
-			  (s * (1 - t) * image[indexUL][c]) +
-			  (s * t) * image[indexDL][c] +
-			  ((1 - s) * t) * image[indexDR][c];
-	  }
-  }
-  return GZ_SUCCESS;
-  /* bounds-test u,v to make sure nothing will overflow image array bounds */
-/* determine texture cell corner values and perform bilinear interpolation */
-/* set color to interpolated GzColor value and return */
+	if (xpoint == xbegin && ypoint == ybegin) { // if texture lies on a point
+		color[RED] = image[indexUR][RED];
+		color[GREEN] = image[indexUR][GREEN];
+		color[BLUE] = image[indexUR][BLUE];
+	}
+	else { // bilinear interpolation
+		float s = xpoint - xbegin;
+		float t = ypoint - ybegin;
+		for (int c = 0; c < 3; ++c) {
+			color[c] = ((1 - s) * (1 - t) * image[indexUR][c]) +
+				(s * (1 - t) * image[indexUL][c]) +
+				(s * t) * image[indexDL][c] +
+				((1 - s) * t) * image[indexDR][c];
+		}
+	}
+	return GZ_SUCCESS;
+	/* bounds-test u,v to make sure nothing will overflow image array bounds */
+	/* determine texture cell corner values and perform bilinear interpolation */
+	/* set color to interpolated GzColor value and return */
 }
 
 void subVector(float *v1, float *v2, float *sol) { // subtracts the vector
@@ -162,8 +162,8 @@ float perlinNoise(float u, float v)
 	const int GSIZE = 4;
 	float gradientMap[GSIZE][2] =
 	{
-		{ 1, 1 }, { -1, 1 },
-		{ 1, -1 }, { -1, -1 }
+	{ 1, 1 }, { -1, 1 },
+	{ 1, -1 }, { -1, -1 }
 	};
 	*/
 	// Scale must be in power of 2
@@ -238,10 +238,10 @@ float perlinNoise(float u, float v)
 /* Procedural texture function */
 int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 {
-//http://flafla2.github.io/2014/08/09/perlinnoise.html
-//http://www.angelcode.com/dev/perlin/perlin.html
-//http://lodev.org/cgtutor/randomnoise.html
-//http://code.google.com/p/fractalterraingeneration/wiki/Perlin_Noise
+	//http://flafla2.github.io/2014/08/09/perlinnoise.html
+	//http://www.angelcode.com/dev/perlin/perlin.html
+	//http://lodev.org/cgtutor/randomnoise.html
+	//http://code.google.com/p/fractalterraingeneration/wiki/Perlin_Noise
 
 	float x = u - (int)u;
 	float y = v - (int)v;
@@ -255,11 +255,11 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	//float yTile = findTileCoord(v, scale);
 
 	/////////////////////////////////////////////////////////////////
-	
+
 	float noise_value = 0;
 	float total = 0;
 	float persist = 0.5;
-	int octaves = 1;
+	int octaves = 4;
 	float freq = 1, ampl = 1;
 
 	// turbulence
@@ -271,17 +271,38 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 		freq *= 2.0f;
 		ampl *= persist;
 	}
-	
-	//////////////////////////////////////////////////////
-
 	noise_value /= total;
+	//////////////////////////////////////////////////////
+	if (noise_value < 0) {
+		noise_value *= -1;
+	}
+	float OFFSETx = 0;
+	float OFFSETy = -0.65;
+	float stretchX = 5;
+	float stretchY = 2;
+	float numRings = 1;
+	float turbFactor = 7;
+
+	float xCoord = u * GSIZE+OFFSETx*GSIZE;
+	float yCoord = v * GSIZE+OFFSETy*GSIZE;
+	float xScaled = (xCoord - GSIZE / 2) / GSIZE*stretchX;
+	float yScaled = (yCoord - GSIZE / 2) / GSIZE*stretchY;
+	
+	float dist = sqrt(xScaled*xScaled + yScaled*yScaled)+turbFactor*noise_value/GSIZE;
+	float newU = (sin(dist * 3.14159265358979*numRings*2));
+	
+	if (newU < 0) {
+		newU = newU * -1;
+	}
+	
 
 	// Perlin noise must first take u, v and then find the four points (each with a gradient vector)
 	// implement WANG Tiles: a type of perlin noise
 
 	for (int i = 0; i < 3; ++i) {
-		color[i] = noise_value;
+		color[i] = newU;
 	}
+	
 
 	return 1;
 }
@@ -289,8 +310,7 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 /* Free texture memory */
 int GzFreeTexture()
 {
-	if(image!=NULL)
+	if (image != NULL)
 		free(image);
 	return GZ_SUCCESS;
 }
-
