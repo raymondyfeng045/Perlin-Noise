@@ -278,10 +278,12 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	}
 	float OFFSETx = 0;
 	float OFFSETy = -0.65;
-	float stretchX = 5;
-	float stretchY = 2;
+	float stretchX = 10;
+	float stretchY = 3;
 	float numRings = 1;
-	float turbFactor = 7;
+	float turbFactor = 9;
+	float woodWeight = 0.7;
+	float backgroundNoiseWeight = 0.3;
 
 	float xCoord = u * GSIZE+OFFSETx*GSIZE;
 	float yCoord = v * GSIZE+OFFSETy*GSIZE;
@@ -294,16 +296,13 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	if (newU < 0) {
 		newU = newU * -1;
 	}
+
+	float colorIntensity = noise_value*backgroundNoiseWeight + newU*woodWeight;
 	
-
-	// Perlin noise must first take u, v and then find the four points (each with a gradient vector)
-	// implement WANG Tiles: a type of perlin noise
-
-	for (int i = 0; i < 3; ++i) {
-		color[i] = newU;
-	}
-	
-
+	color[RED] = 0.8*colorIntensity;
+	color[GREEN] =0.5*colorIntensity;
+	color[BLUE] = 0.3*colorIntensity;
+	// 0.8 0.5 0.3 brown color
 	return 1;
 }
 
