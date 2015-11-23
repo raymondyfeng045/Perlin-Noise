@@ -2,13 +2,16 @@
 #include    "stdafx.h" 
 #include	"stdio.h"
 #include	"Gz.h"
-
+#define RING 1
+#define STRAIGHT 2
+#define COMBINED 0
+#define FRACTION 0
 GzColor	*image = NULL;
 int xs, ys;
 int reset = 1;
 bool set = false;
 
-const int GSIZE = 16;
+const int GSIZE = 32;
 float gradientMap[GSIZE*GSIZE][2];
 
 /* Image texture function */
@@ -257,52 +260,106 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	/////////////////////////////////////////////////////////////////
 
 	float noise_value = 0;
-	float total = 0;
-	float persist = 0.5;
-	int octaves = 4;
+	float total = noise_value;
+	float persist = 0.50;
+	int octaves = 8;
 	float freq = 1, ampl = 1;
+#if FRACTION
+	freq = 0.125;
+	persist = 0.1;
+#endif 
 
 	// turbulence
 	//////////////////////////////////////////////////////
-
-	for (int i = 0; i < octaves; ++i) {
+	
+	for (int i = 0; i < 4; ++i) {
 		noise_value += perlinNoise(x * freq, y * freq) * ampl;
 		total += ampl;
 		freq *= 2.0f;
 		ampl *= persist;
 	}
 	noise_value /= total;
+#if FRACTION
+	float g = noise_value*30;
+	float grain = fabs(g - (int)(g));
+#endif
 	//////////////////////////////////////////////////////
-	if (noise_value < 0) {
-		noise_value *= -1;
-	}
-	float OFFSETx = 0;
-	float OFFSETy = -0.65;
-	float stretchX = 10;
-	float stretchY = 3;
-	float numRings = 1;
-	float turbFactor = 9;
-	float woodWeight = 0.7;
-	float backgroundNoiseWeight = 0.3;
+	float s = max(0.9, (double)rand() / (double)(RAND_MAX));
+	int woodType = RING;
 
-	float xCoord = u * GSIZE+OFFSETx*GSIZE;
-	float yCoord = v * GSIZE+OFFSETy*GSIZE;
-	float xScaled = (xCoord - GSIZE / 2) / GSIZE*stretchX;
-	float yScaled = (yCoord - GSIZE / 2) / GSIZE*stretchY;
+	noise_value = fabs(noise_value);
+	float OFFSETx, OFFSETy, stretchX, stretchY, numRings, turbFactor, woodWeight, backgroundNoiseWeight;
 	
-	float dist = sqrt(xScaled*xScaled + yScaled*yScaled)+turbFactor*noise_value/GSIZE;
-	float newU = (sin(dist * 3.14159265358979*numRings*2));
-	
-	if (newU < 0) {
-		newU = newU * -1;
+	switch (woodType) {
+		case(RING) :
+			OFFSETx = 0;
+			OFFSETy = 0;
+#if COMBINED
+			OFFSETx = 0.25;
+#endif
+			stretchX = 1.0;
+			stretchY = 1.0;
+			numRings = 4;
+			turbFactor = 2;
+			woodWeight = 0.7;
+			backgroundNoiseWeight = 0.3;
+			break;
+		case(STRAIGHT) :
+			OFFSETx = 0.5;
+			OFFSETy = -0.65;
+			stretchX = 2;
+			stretchY = 0;
+			numRings = 7;
+			turbFactor = 3;
+			woodWeight = 0.7;
+			backgroundNoiseWeight = 0.3;
+			break;
 	}
-
-	float colorIntensity = noise_value*backgroundNoiseWeight + newU*woodWeight;
+	float xCoord = u * GSIZE + OFFSETx*GSIZE;
+	float yCoord = v * GSIZE + OFFSETy*GSIZE;
+	float xScaled = pow((xCoord - GSIZE / 2) / GSIZE*stretchX,1.01);
+	float yScaled = pow((yCoord - GSIZE / 2) / GSIZE*stretchY,1.01);
 	
+
+	float dist = sqrt(xScaled*xScaled + yScaled*yScaled) + turbFactor*noise_value / GSIZE;
+	float newU = fabs(sin(dist * 3.14159265358979*numRings * 2));
+
+#if COMBINED
+	OFFSETx = 0.5;
+	OFFSETy = -0.65;
+	stretchX = 10;
+	stretchY = 0;
+	numRings = 4;
+	turbFactor = 7;
+	woodWeight = 0.9;
+	backgroundNoiseWeight = 0.1;
+	xCoord = u * GSIZE + OFFSETx*GSIZE;
+	yCoord = v * GSIZE + OFFSETy*GSIZE;
+	xScaled = (xCoord - GSIZE / 2) / GSIZE*stretchX;
+	yScaled = (yCoord - GSIZE / 2) / GSIZE*stretchY;
+
+	dist = sqrt(xScaled*xScaled + yScaled*yScaled) + turbFactor*noise_value / GSIZE;
+	noise_value = sin(dist * 3.14159265358979*numRings * 2);
+#endif
+	float colorIntensity = max(noise_value*backgroundNoiseWeight + newU*woodWeight, 0.6);
+	
+#if FRACTION	
+	colorIntensity = 0.6;
+
+	float diffR = 0.8 - 0.8*0.6;
+	float diffG = 0.5 - 0.5*0.6;
+	float diffB = 0.3 - 0.3*0.6;
+	color[RED] = (0.32 + diffR*grain)*woodWeight;
+	color[GREEN] = (0.2 + diffG*grain)*woodWeight;
+	color[BLUE] = (0.12*+diffB*grain)*woodWeight;
+#else
 	color[RED] = 0.8*colorIntensity;
-	color[GREEN] =0.5*colorIntensity;
+	color[GREEN] = 0.5*colorIntensity;
 	color[BLUE] = 0.3*colorIntensity;
+#endif
+
 	// 0.8 0.5 0.3 brown color
+
 	return 1;
 }
 
