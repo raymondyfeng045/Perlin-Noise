@@ -1245,6 +1245,7 @@ void colorPixel(GzRender *render, float *norm, float *color) {
 			// diffuse lighting
 
 			for (int c = 0; c < 3; ++c) { // adding specular and diffuse lighting
+				
 				fbuf[c] += render->lights[l].color[c] * render->Ks[c] * pow(REdot, render->spec);
 				fbuf[c] += render->lights[l].color[c] * render->Kd[c] * NLdot;
 			}
@@ -1320,6 +1321,7 @@ void colorPixelTex(GzRender *render, float *norm, float *color, float *Ks, float
 			// diffuse lighting
 
 			for (int c = 0; c < 3; ++c) { // adding specular and diffuse lighting
+				render->lights[l].color[c] = 0.5;
 				fbuf[c] += render->lights[l].color[c] * Ks[c] * pow(REdot, render->spec);
 				fbuf[c] += render->lights[l].color[c] * Kd[c] * NLdot;
 			}

@@ -5,7 +5,7 @@
 #define RING 1
 #define STRAIGHT 2
 #define COMBINED 0
-#define FRACTION 1
+#define FRACTION 0
 GzColor	*image=NULL;
 int xs, ys;
 int reset = 1;
@@ -289,7 +289,7 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	int octaves = 4;
 	float freq = 0.5, ampl = 1;
 #if FRACTION
-	freq = 0.15;
+	freq = 0.1;
 	persist = 0.1;
 #endif 
 
@@ -304,14 +304,14 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	}
 	noise_value /= total;
 #if FRACTION
-	float g = noise_value * 30;
+	float g = noise_value*16;
 	float grain = fabs(g - (int)(g));
 #endif
 	//////////////////////////////////////////////////////
-	float s = max(0.9, (double)rand() / (double)(RAND_MAX));
+	float s = max(0, (double)rand() / (double)(RAND_MAX));
 	int woodType = RING;
 
-	noise_value = fabs(noise_value);
+	//noise_value = fabs(noise_value);
 	float OFFSETx, OFFSETy, stretchX, stretchY, numRings, turbFactor, woodWeight, backgroundNoiseWeight;
 
 	switch (woodType) {
@@ -323,21 +323,21 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 #endif
 		stretchX = 1.0;
 		stretchY = 1.0;
-		numRings = 14;
+		numRings = 24;
 #if FRACTION
 		numRings = 1;
 #endif
-		turbFactor = 1; 
-		woodWeight = 0.7;
-		backgroundNoiseWeight = 0.3;
+		turbFactor = 1.5;
+		woodWeight = 0.9;
+		backgroundNoiseWeight = 0.1;
 		break;
 	case(STRAIGHT) :
 		OFFSETx = 0.5;
 		OFFSETy = -0.65;
 		stretchX = 2;
 		stretchY = 0;
-		numRings = 12;
-		turbFactor = 1;
+		numRings = 6;
+		turbFactor = 2;
 		woodWeight = 0.7;
 		backgroundNoiseWeight = 0.3;
 		break;
@@ -346,11 +346,20 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	float yCoord = v * GSIZE + OFFSETy*GSIZE;
 	float xScaled = (xCoord - GSIZE / 2) / GSIZE*stretchX;
 	float yScaled = (yCoord - GSIZE / 2) / GSIZE*stretchY;
-
-
-	float dist = sqrt(xScaled*xScaled + yScaled*yScaled) + turbFactor*noise_value / GSIZE;
-	float newU = fabs(sin(dist * 3.14159265358979*numRings * 2));
-
+	float newU;
+	float dist;
+	switch (woodType){
+	case(RING) :
+		dist = sqrt(xScaled*xScaled + yScaled*yScaled)*pow(3, (double)(-1 * sqrt(xScaled*xScaled + yScaled*yScaled))) + turbFactor*noise_value / GSIZE;
+		newU = fabs(sin(dist * 3.14159265358979*numRings * 2)) - 0.8;
+		newU = max(0, newU);
+		break;
+	case(STRAIGHT):
+		dist = sqrt(xScaled*xScaled + yScaled*yScaled) + turbFactor*noise_value / GSIZE;
+		newU = fabs(sin(dist * 3.14159265358979*numRings * 2))-0.8;
+		newU=max(0,newU);
+		break;
+	}
 #if COMBINED
 	OFFSETx = 0.5;
 	OFFSETy = -0.65;
@@ -371,18 +380,37 @@ int ptex_fun(float u, float v, GzColor color) // currently set to checkerboard
 	float colorIntensity = max(noise_value*backgroundNoiseWeight + newU*woodWeight, 0.6);
 
 #if FRACTION	
-	colorIntensity = 0.6;
-
+	/*colorIntensity = 0.6;
+	
 	float diffR = 0.8 - 0.8*0.6;
 	float diffG = 0.5 - 0.5*0.6;
 	float diffB = 0.3 - 0.3*0.6;
 	color[RED] = (0.32 + diffR*grain)*woodWeight;
 	color[GREEN] = (0.2 + diffG*grain)*woodWeight;
 	color[BLUE] = (0.12*+diffB*grain)*woodWeight;
+	*/
+	float lightRed = 0.8;
+	float lightGreen = 0.5;
+	float lightBlue = 0.3;
+
+	float dR = lightRed*0.6;
+	float dG = lightGreen*0.6;
+	float dB = lightBlue * 0.6;
+	color[RED] = lerp(lightRed, dR, grain);
+	color[GREEN] = lerp(lightGreen, dG, grain);
+	color[BLUE] = lerp(lightBlue, dB, grain);
+	
 #else
-	color[RED] = 0.8*colorIntensity;
-	color[GREEN] = 0.5*colorIntensity;
-	color[BLUE] = 0.3*colorIntensity;
+	float lightRed = 0.8;
+	float lightGreen = 0.5;
+	float lightBlue = 0.3;
+
+	float dR = lightRed*0.4;
+	float dG = lightGreen*0.4;
+	float dB = lightBlue * 0.4;
+	color[RED] = lerp(lightRed, dR, newU);
+	color[GREEN] = lerp(lightGreen, dG, newU);
+	color[BLUE] = lerp(lightBlue, dB, newU);
 #endif
 
 	// 0.8 0.5 0.3 brown color
